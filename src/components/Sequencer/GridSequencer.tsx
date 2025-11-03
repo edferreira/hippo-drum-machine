@@ -1,7 +1,6 @@
 import { el, ElemNode } from "@elemaudio/core";
 import clap from "../../lib/sounds/clap";
 import hat from "../../lib/sounds/hat";
-import "./GridSequencer.css";
 import { kick } from "../../lib/sounds/kick";
 import Grid from "../Grid/Grid";
 import { useEffect, useState } from "react";
