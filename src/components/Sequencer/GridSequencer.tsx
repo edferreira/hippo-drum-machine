@@ -5,6 +5,7 @@ import { kick } from "../../lib/sounds/kick";
 import Grid from "../Grid/Grid";
 import { useEffect, useState } from "react";
 import { Instrument, useSequencer } from "../../lib/useSequencer";
+import Controllers from "../Controllers/Controllers";
 
 const DEFAULT_STEPS = 8;
 const DEFAULT_BPM = 80;
@@ -52,6 +53,7 @@ export default function GridSequencer() {
   const [steps, setSteps] = useState(DEFAULT_STEPS);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [mute, setMute] = useState(false);
+  const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [instrumentConfig, setInstrumentConfig] = useState(instrumentDefs);
 
   const [instrumentGrid, setInstrumentGrid] = useState<boolean[][]>(
@@ -63,6 +65,7 @@ export default function GridSequencer() {
     instruments: instrumentConfig,
     bpm,
     mute,
+    beatsPerBar,
   });
 
   useEffect(() => {
@@ -70,28 +73,16 @@ export default function GridSequencer() {
   }, [steps]);
 
   return (
-    <div>
-      <input
-        aria-label="steps"
-        min={2}
-        max={24}
-        id="steps"
-        value={steps}
-        type="number"
-        onChange={(e) => setSteps(Number(e.target.value))}
-      />
-      <input
-        aria-label="bpm"
-        id="bpm"
-        value={bpm}
-        type="number"
-        onChange={(e) => setBpm(Number(e.target.value))}
-      />
-      <input
-        aria-label="mute"
-        id="mute"
-        onChange={(e) => setMute(e.target.checked)}
-        type="checkbox"
+    <div className="app-container">
+      <Controllers
+        steps={steps}
+        setSteps={setSteps}
+        bpm={bpm}
+        setBpm={setBpm}
+        mute={mute}
+        setMute={setMute}
+        beatsPerBar={beatsPerBar}
+        setBeatsPerBar={setBeatsPerBar}
       />
       <Grid
         data={instrumentGrid}

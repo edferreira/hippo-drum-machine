@@ -1,0 +1,25 @@
+.controllers {
+  display: flex;
+  gap: 20px;
+  border-radius: 10px;
+  background-color: #2c2430;
+  color: white;
+}
+
+.controller-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.controller-item label {
+  font-size: 14px;
+}
+
+.controller-item input {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #5c5c71;
+  background-color: #3e3e52;
+  color: white;
+}

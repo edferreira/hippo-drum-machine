@@ -16,6 +16,7 @@ type UseSynthProps = {
   instruments: Instrument[];
   bpm?: number;
   mute?: boolean;
+  beatsPerBar?: number;
 };
 
 export const useSequencer = ({
@@ -23,6 +24,7 @@ export const useSequencer = ({
   instruments,
   bpm = 120,
   mute = false,
+  beatsPerBar = 4,
 }: UseSynthProps) => {
   const render = useCallback(async () => {
     try {
@@ -40,7 +42,6 @@ export const useSequencer = ({
 
       // Determine pattern length (columns) and convert BPM to per-step rate
       const stepsPerPattern = steps[0]?.length ?? 0;
-      const beatsPerBar = 4;
       if (stepsPerPattern <= 0) {
         const silence = el.const({ value: 0 });
         if (core) {
@@ -64,11 +65,7 @@ export const useSequencer = ({
 
       // Build sequences for each instrument, resetting with the same sync used by the visual phasor
       const seqs = instruments.map((inst, i) =>
-        el.seq(
-          { seq: steps[i] },
-          tick,
-          sync
-        )
+        el.seq({ seq: steps[i] }, tick, sync)
       );
 
       // Create audio nodes for each instrument
@@ -138,7 +135,7 @@ export const useSequencer = ({
 
   const restart = () => {
     core.reset();
-  }
+  };
 
   return { render, restart };
 };
