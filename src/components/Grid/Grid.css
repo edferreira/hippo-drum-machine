@@ -1,8 +1,12 @@
 .grid {
+  --square-size: 50px;
   display: grid;
-  grid-template-columns: 50px repeat(var(--cols), 50px);
+  grid-template-columns: 50px repeat(var(--cols), var(--square-size, 50px));
   align-items: center;
   gap: 1px;
+
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch;
 }
 
 .instrument {
@@ -10,8 +14,8 @@
 }
 
 .grid-cell {
-  height: 50px;
-  width: 50px;
+  height: var(--square-size);
+  width: var(--square-size);
   background-color: #5c5c71;
   border-radius: 4px;
 }
@@ -23,4 +27,24 @@
 .grid-cell--playing {
   outline: 2px solid #ffffff55;
   box-shadow: 0 0 0 2px #ffffff22 inset;
+}
+
+.app-container {
+  max-width: 100%;
+  border-radius: 10px;
+  background-color: #2c2430;
+  padding: 30px 20px;
+  gap: 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    --square-size: 30px;
+  }
+
+  .instrument {
+    font-size: 12px;
+  }
 }
