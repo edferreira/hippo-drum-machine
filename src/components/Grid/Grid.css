@@ -1,7 +1,7 @@
 .grid {
   --square-size: 50px;
   display: grid;
-  grid-template-columns: 50px repeat(var(--cols), var(--square-size, 50px));
+  grid-template-columns: 150px repeat(var(--cols), var(--square-size, 50px));
   align-items: center;
   gap: 1px;
 
@@ -12,6 +12,11 @@
 
 .instrument {
   color: white;
+     overflow: hidden;
+   display: -webkit-box;
+   -webkit-line-clamp: 2; 
+           line-clamp: 2; 
+   -webkit-box-orient: vertical;
 }
 
 .grid-cell {
