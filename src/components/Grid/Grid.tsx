@@ -11,7 +11,7 @@ import { core } from "../../lib/webRenderer";
 type GridProps = {
   data: boolean[][];
   handleChange: (args: boolean[][]) => void;
-  headers: string[];
+  headers: React.ReactNode[];
   currentStep?: number;
 };
 
@@ -62,11 +62,11 @@ const Grid: React.FC<GridProps> = ({ data, handleChange, headers }) => {
       {data.map((instrument, i) => (
         <Fragment key={`row-${i}`}>
           <div key={`header-${i}`}>
-            <p className="instrument">{headers[i]}</p>
+            {headers[i]}
           </div>
           {instrument.map((_, j) => (
             <div
-              key={`${headers[i]}-${j}`}
+              key={`cell-${i}-${j}`}
               onMouseDown={() => {
                 setCurrentAction(!data[i][j]);
                 handleToggle(i, j);

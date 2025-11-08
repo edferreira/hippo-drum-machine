@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { Instrument, useSequencer } from "../../lib/useSequencer";
 import { useAudioContext } from "../../lib/useAudioContext";
 import { useWebRenderer } from "../../lib/useWebRenderer";
-import { core } from "../../lib/webRenderer";
 import Controllers from "../Controllers/Controllers";
+import Knob from "../Knob/Knob";
 
 const DEFAULT_STEPS = 8;
 const DEFAULT_BPM = 80;
@@ -66,7 +66,7 @@ export default function GridSequencer() {
     setupGrid(instrumentConfig.length, steps)
   );
 
-  useSequencer({
+  const { loadSample } = useSequencer({
     steps: instrumentGrid.map((row) => row.map((v) => Number(v))),
     instruments: instrumentConfig,
     bpm,
@@ -105,31 +105,16 @@ export default function GridSequencer() {
     if (!file) return;
 
     try {
-      // Ensure audio is active and renderer is ready
-      await resume();
-      await initRenderer();
       const ctx = ctxRef.current;
       if (!ctx) throw new Error("AudioContext not ready");
 
-      const arrayBuffer = await file.arrayBuffer();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const { vfsKey, name } = await loadSample(ctx, file);
 
-      const channels: Float32Array[] = [];
-      for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-        channels.push(audioBuffer.getChannelData(ch));
-      }
-
-      const vfsKey = `sample:${Date.now()}:${file.name}`;
-      // Register in Elementary VFS
-      core.updateVirtualFileSystem({
-        [vfsKey]: channels,
-      });
-
-      // Create a new instrument using el.sample
       const newInstrument: Instrument = {
         key: vfsKey,
-        name: file.name.replace(/\.[^/.]+$/, ""),
+        name,
         volume: 1,
+        muted: false,
         makeNode: (seq: any) => el.sample({ path: vfsKey }, seq, 1),
       };
 
@@ -166,11 +151,65 @@ export default function GridSequencer() {
         beatsPerBar={beatsPerBar}
         setBeatsPerBar={setBeatsPerBar}
       />
-      <Grid
-        data={instrumentGrid}
-        handleChange={setInstrumentGrid}
-        headers={instrumentConfig.map((i) => i.name)}
-      />
+      {(() => {
+        const setInstrumentVolumeAt = (idx: number, vol: number) => {
+          setInstrumentConfig((prev) =>
+            prev.map((inst, i) => (i === idx ? { ...inst, volume: vol } : inst))
+          );
+        };
+        const setInstrumentMutedAt = (idx: number, muted: boolean) => {
+          setInstrumentConfig((prev) =>
+            prev.map((inst, i) => (i === idx ? { ...inst, muted } : inst))
+          );
+        };
+        const deleteInstrumentAt = (idx: number) => {
+          setInstrumentConfig((prev) => prev.filter((_, i) => i !== idx));
+          setInstrumentGrid((prev) => prev.filter((_, i) => i !== idx));
+        };
+
+        const headers = instrumentConfig.map((inst, idx) => (
+          <div key={`inst-header-${idx}`}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Knob
+                value={inst.volume ?? 1}
+                onChange={(v) => setInstrumentVolumeAt(idx, v)}
+                size={24}
+                sensitivity={2}
+              />
+              <p className="instrument" style={{ margin: 0, flex: 1 }} title={inst.name}>
+                {inst.name}
+              </p>
+              <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={!!inst.muted}
+                  onChange={(e) => setInstrumentMutedAt(idx, e.target.checked)}
+                />
+                <span style={{ color: "#ccc", fontSize: 12 }}>M</span>
+              </label>
+              <button
+                onClick={() => deleteInstrumentAt(idx)}
+                title="Delete track"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #5c5c71",
+                  color: "#ddd",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ));
+
+        return (
+          <Grid data={instrumentGrid} handleChange={setInstrumentGrid} headers={headers} />
+        );
+      })()}
     </div>
   );
 }

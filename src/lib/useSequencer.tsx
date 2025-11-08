@@ -8,6 +8,7 @@ export type Instrument = {
   name: string;
   seqOptions?: any;
   volume?: number;
+  muted?: boolean;
   makeNode: (seq: any) => any;
 };
 
@@ -71,7 +72,7 @@ export const useSequencer = ({
       // Create audio nodes for each instrument
       const nodes = instruments.map((inst, i) =>
         inst.makeNode
-          ? el.mul(inst.volume ?? 1, inst.makeNode(seqs[i]))
+          ? el.mul(inst.muted ? 0 : inst.volume ?? 1, inst.makeNode(seqs[i]))
           : el.const({ value: 0 })
       );
 
@@ -137,7 +138,31 @@ export const useSequencer = ({
     core.reset();
   };
 
-  return { render, restart };
+  /**
+   * Decode an audio File using the provided AudioContext and register it in the
+   * Elementary Virtual File System. Returns the VFS key and a human name.
+   */
+  const loadSample = async (
+    ctx: AudioContext,
+    file: File
+  ): Promise<{ vfsKey: string; name: string }> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    const channels: Float32Array[] = [];
+    for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+      channels.push(audioBuffer.getChannelData(ch));
+    }
+
+    const vfsKey = `sample:${Date.now()}:${file.name}`;
+    core.updateVirtualFileSystem({
+      [vfsKey]: channels,
+    });
+
+    return { vfsKey, name: file.name.replace(/\.[^/.]+$/, "") };
+  };
+
+  return { render, restart, loadSample };
 };
 
 export default useSequencer;
