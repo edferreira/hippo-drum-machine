@@ -4,6 +4,7 @@
   border-radius: 10px;
   background-color: #2c2430;
   color: white;
+  justify-content: center;
 }
 
 .controller-item {
