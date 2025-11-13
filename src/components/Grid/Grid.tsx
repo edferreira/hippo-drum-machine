@@ -1,28 +1,26 @@
 import "./Grid.css";
-import {
-  CSSProperties,
-  Fragment,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { core } from "../../lib/webRenderer";
 
 type GridProps = {
   data: boolean[][];
   handleChange: (args: boolean[][]) => void;
-  headers: React.ReactNode[];
+  renderHeader?: (rowIndex: number) => React.ReactNode;
   currentStep?: number;
+  beatsPerBar?: number;
 };
 
 const useCurrentStep = (size: number) => {
   const [pos, setPos] = useState(-1);
 
-  const handleSnapshot = useCallback((e: { source?: string; data: number }) => {
-    if (e?.source === "snapshot:patternpos") {
-      setPos(prevPos => e.data === 0 ? 0 : prevPos + 1 );
-    }
-  }, [size]);
+  const handleSnapshot = useCallback(
+    (e: { source?: string; data: number }) => {
+      if (e?.source === "snapshot:patternpos") {
+        setPos((prevPos) => (e.data === 0 ? 0 : prevPos + 1));
+      }
+    },
+    [size]
+  );
 
   useEffect(() => {
     core.on("snapshot", handleSnapshot);
@@ -35,8 +33,12 @@ const useCurrentStep = (size: number) => {
   return pos;
 };
 
-const Grid: React.FC<GridProps> = ({ data, handleChange, headers }) => {
-  const style = { "--cols": data[0].length } as CSSProperties;
+const Grid: React.FC<GridProps> = ({
+  data,
+  handleChange,
+  renderHeader,
+  beatsPerBar,
+}) => {
   const [currentAction, setCurrentAction] = useState<boolean>();
 
   const currentStep = useCurrentStep(data[0].length);
@@ -58,30 +60,34 @@ const Grid: React.FC<GridProps> = ({ data, handleChange, headers }) => {
   };
 
   return (
-    <div className="grid" style={style}>
+    <div className="grid">
       {data.map((instrument, i) => (
-        <Fragment key={`row-${i}`}>
-          <div key={`header-${i}`}>
-            {headers[i]}
+        <div className="grid-row" key={`row-${i}`}>
+          <div className="grid-row-header">
+            {renderHeader ? renderHeader(i) : null}
           </div>
-          {instrument.map((_, j) => (
-            <div
-              key={`cell-${i}-${j}`}
-              onMouseDown={() => {
-                setCurrentAction(!data[i][j]);
-                handleToggle(i, j);
-              }}
-              onMouseEnter={(e) => {
-                if (e.buttons === 1) {
-                  handleToggle(i, j, currentAction);
-                }
-              }}
-              className={`grid-cell ${
-                data[i][j] === true ? "grid-cell--active" : ""
-              } ${j === currentStep ? "grid-cell--playing" : ""}`}
-            />
-          ))}
-        </Fragment>
+          <div className="grid-row-cells">
+            {instrument.map((_, j) => (
+              <div
+                key={`cell-${i}-${j}`}
+                onMouseDown={() => {
+                  setCurrentAction(!data[i][j]);
+                  handleToggle(i, j);
+                }}
+                onMouseEnter={(e) => {
+                  if (e.buttons === 1) {
+                    handleToggle(i, j, currentAction);
+                  }
+                }}
+                className={`grid-cell ${
+                  data[i][j] === true ? "grid-cell--active" : ""
+                } ${j === currentStep ? "grid-cell--playing" : ""} ${
+                  beatsPerBar && j % beatsPerBar === 0 ? "grid-cell--bar" : ""
+                }`}
+              />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );

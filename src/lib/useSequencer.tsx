@@ -9,6 +9,7 @@ export type Instrument = {
   seqOptions?: any;
   volume?: number;
   muted?: boolean;
+  dbId?: number | string;
   makeNode: (seq: any) => any;
 };
 
@@ -162,7 +163,29 @@ export const useSequencer = ({
     return { vfsKey, name: file.name.replace(/\.[^/.]+$/, "") };
   };
 
-  return { render, restart, loadSample };
+  /** Register a Blob as a sample in the VFS using a provided display name */
+  const loadSampleBlob = async (
+    ctx: AudioContext,
+    blob: Blob,
+    name: string
+  ): Promise<{ vfsKey: string; name: string }> => {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    const channels: Float32Array[] = [];
+    for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+      channels.push(audioBuffer.getChannelData(ch));
+    }
+
+    const vfsKey = `sample:${Date.now()}:${name}`;
+    core.updateVirtualFileSystem({
+      [vfsKey]: channels,
+    });
+
+    return { vfsKey, name };
+  };
+
+  return { render, restart, loadSample, loadSampleBlob };
 };
 
 export default useSequencer;

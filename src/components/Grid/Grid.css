@@ -1,14 +1,29 @@
 .grid {
   --square-size: 50px;
-  display: grid;
-  grid-template-columns: 150px repeat(var(--cols), var(--square-size, 50px));
-  align-items: center;
-  gap: 1px;
+  --header-width: 250px;
+  --gap-size: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: auto;
+}
 
-  overflow-x: scroll;
-  -webkit-overflow-scrolling: touch;
-  /* Reserve space for scrollbar so the gutter is always visible */
-  scrollbar-gutter: stable both-edges;
+.grid-row {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-bottom: var(--gap-size);
+}
+
+.grid-row-header {
+  flex: 1 0 var(--header-width);
+  min-width: var(--header-width);
+}
+
+.grid-row-cells {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 /* Custom horizontal scrollbar styling */
@@ -45,10 +60,15 @@
   width: var(--square-size);
   background-color: #5c5c71;
   border-radius: 4px;
+  margin-right: var(--gap-size);
 }
 
 .grid-cell--active {
   background-color: #fff52e;
+}
+
+.grid-cell--bar {
+  margin-left: var(--gap-size);
 }
 
 .grid-cell--playing {

@@ -5,10 +5,17 @@ import { kick } from "../../lib/sounds/kick";
 import Grid from "../Grid/Grid";
 import { useEffect, useRef, useState } from "react";
 import { Instrument, useSequencer } from "../../lib/useSequencer";
-import { useAudioContext } from "../../lib/useAudioContext";
-import { useWebRenderer } from "../../lib/useWebRenderer";
+import { useAudioEngine } from "../../lib/useAudioEngine";
+import { useInstruments } from "../../lib/useInstruments";
+import {
+  addSample,
+  listSamples,
+  updateSample,
+  deleteSample,
+} from "../../lib/storage/samplesDB";
 import Controllers from "../Controllers/Controllers";
-import Knob from "../Knob/Knob";
+import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
+import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
 
 const DEFAULT_STEPS = 8;
 const DEFAULT_BPM = 80;
@@ -53,20 +60,23 @@ const setupGrid = (rows: number, columns: number) => {
 };
 
 export default function GridSequencer() {
-  const { ctxRef, resume } = useAudioContext();
-  const { initRenderer } = useWebRenderer(ctxRef);
+  const { ctxRef, ensureReady } = useAudioEngine();
   const [steps, setSteps] = useState(DEFAULT_STEPS);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [mute, setMute] = useState(false);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
-  const [instrumentConfig, setInstrumentConfig] = useState(instrumentDefs);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const {
+    instruments: instrumentConfig,
+    setSteps: setTrackSteps,
+    grid: instrumentGrid,
+    setGrid,
+    setVolumeAt,
+    setMutedAt,
+    deleteAt,
+    addInstrument,
+  } = useInstruments(instrumentDefs, steps);
 
-  const [instrumentGrid, setInstrumentGrid] = useState<boolean[][]>(
-    setupGrid(instrumentConfig.length, steps)
-  );
-
-  const { loadSample } = useSequencer({
+  const { loadSample, loadSampleBlob } = useSequencer({
     steps: instrumentGrid.map((row) => row.map((v) => Number(v))),
     instruments: instrumentConfig,
     bpm,
@@ -75,36 +85,46 @@ export default function GridSequencer() {
   });
 
   useEffect(() => {
-    setInstrumentGrid(setupGrid(instrumentConfig.length, steps));
-  }, [steps]);
+    // propagate steps change to instrument grid manager
+    setTrackSteps(steps);
+  }, [steps, setTrackSteps]);
 
-  // Ensure renderer is initialized once AudioContext exists
+  // Engine initialization is handled by useAudioEngine
+
+  // On mount: load persisted samples and rehydrate instruments
   useEffect(() => {
     (async () => {
-      if (ctxRef.current) {
-        try {
-          await resume();
-          await initRenderer();
-        } catch (e) {
-          console.warn("Renderer init failed:", e);
+      try {
+        await ensureReady();
+        const ctx = ctxRef.current;
+        if (!ctx) return;
+        const records = await listSamples();
+        for (const rec of records) {
+          const { vfsKey, name } = await loadSampleBlob(
+            ctx,
+            rec.blob,
+            rec.name
+          );
+          const inst: Instrument = {
+            key: vfsKey,
+            name,
+            volume: rec.volume,
+            muted: rec.muted,
+            dbId: rec.id,
+            makeNode: (seq: any) => el.sample({ path: vfsKey }, seq, 1),
+          };
+          addInstrument(inst);
         }
+      } catch (e) {
+        console.warn("Failed to load persisted samples:", e);
       }
     })();
-  }, [ctxRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleAddSampleClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleSampleChosen: React.ChangeEventHandler<HTMLInputElement> = async (
-    e
-  ) => {
-    const file = e.target.files?.[0];
-    // Reset the input so the same file can be re-selected later
-    e.currentTarget.value = "";
-    if (!file) return;
-
+  const handlePick = async (file: File) => {
     try {
+      await ensureReady();
       const ctx = ctxRef.current;
       if (!ctx) throw new Error("AudioContext not ready");
 
@@ -118,12 +138,20 @@ export default function GridSequencer() {
         makeNode: (seq: any) => el.sample({ path: vfsKey }, seq, 1),
       };
 
-      setInstrumentConfig((prev) => [...prev, newInstrument]);
-      // Add a new row to the grid for the new instrument
-      setInstrumentGrid((prev) => {
-        const cols = prev[0]?.length ?? steps;
-        return [...prev, Array(cols).fill(false)];
-      });
+      // Persist the uploaded sample (store original file blob)
+      try {
+        const dbId = await addSample({
+          name,
+          blob: file,
+          volume: 1,
+          muted: false,
+        });
+        newInstrument.dbId = dbId;
+      } catch (e) {
+        console.warn("Failed to persist sample:", e);
+      }
+
+      addInstrument(newInstrument);
     } catch (err) {
       console.error("Failed to load sample:", err);
     }
@@ -132,14 +160,7 @@ export default function GridSequencer() {
   return (
     <div className="app-container">
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button onClick={handleAddSampleClick}>Add Sample</button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          style={{ display: "none" }}
-          onChange={handleSampleChosen}
-        />
+        <SampleUploadButton onPick={handlePick} />
       </div>
       <Controllers
         steps={steps}
@@ -152,62 +173,47 @@ export default function GridSequencer() {
         setBeatsPerBar={setBeatsPerBar}
       />
       {(() => {
-        const setInstrumentVolumeAt = (idx: number, vol: number) => {
-          setInstrumentConfig((prev) =>
-            prev.map((inst, i) => (i === idx ? { ...inst, volume: vol } : inst))
-          );
-        };
-        const setInstrumentMutedAt = (idx: number, muted: boolean) => {
-          setInstrumentConfig((prev) =>
-            prev.map((inst, i) => (i === idx ? { ...inst, muted } : inst))
-          );
-        };
-        const deleteInstrumentAt = (idx: number) => {
-          setInstrumentConfig((prev) => prev.filter((_, i) => i !== idx));
-          setInstrumentGrid((prev) => prev.filter((_, i) => i !== idx));
-        };
-
-        const headers = instrumentConfig.map((inst, idx) => (
-          <div key={`inst-header-${idx}`}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Knob
-                value={inst.volume ?? 1}
-                onChange={(v) => setInstrumentVolumeAt(idx, v)}
-                size={24}
-                sensitivity={2}
-              />
-              <p className="instrument" style={{ margin: 0, flex: 1 }} title={inst.name}>
-                {inst.name}
-              </p>
-              <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <input
-                  type="checkbox"
-                  checked={!!inst.muted}
-                  onChange={(e) => setInstrumentMutedAt(idx, e.target.checked)}
-                />
-                <span style={{ color: "#ccc", fontSize: 12 }}>M</span>
-              </label>
-              <button
-                onClick={() => deleteInstrumentAt(idx)}
-                title="Delete track"
-                style={{
-                  background: "transparent",
-                  border: "1px solid #5c5c71",
-                  color: "#ddd",
-                  borderRadius: 4,
-                  padding: "2px 6px",
-                  lineHeight: 1,
-                  cursor: "pointer",
-                }}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ));
-
         return (
-          <Grid data={instrumentGrid} handleChange={setInstrumentGrid} headers={headers} />
+          <Grid
+            data={instrumentGrid}
+            beatsPerBar={beatsPerBar}
+            handleChange={setGrid}
+            renderHeader={(idx) => {
+              const inst = instrumentConfig[idx];
+              if (!inst) return null;
+              return (
+                <InstrumentHeaderControls
+                  name={inst.name}
+                  volume={inst.volume ?? 1}
+                  muted={!!inst.muted}
+                  onChangeVolume={async (v) => {
+                    setVolumeAt(idx, v);
+                    if (inst.dbId != null) {
+                      try {
+                        await updateSample(inst.dbId as number, { volume: v });
+                      } catch {}
+                    }
+                  }}
+                  onToggleMute={async (b) => {
+                    setMutedAt(idx, b);
+                    if (inst.dbId != null) {
+                      try {
+                        await updateSample(inst.dbId as number, { muted: b });
+                      } catch {}
+                    }
+                  }}
+                  onDelete={async () => {
+                    if (inst.dbId != null) {
+                      try {
+                        await deleteSample(inst.dbId as number);
+                      } catch {}
+                    }
+                    deleteAt(idx);
+                  }}
+                />
+              );
+            }}
+          />
         );
       })()}
     </div>
