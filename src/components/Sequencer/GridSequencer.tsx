@@ -1,9 +1,9 @@
-import { el, ElemNode } from "@elemaudio/core";
+import { el } from "@elemaudio/core";
 import clap from "../../lib/sounds/clap";
 import hat from "../../lib/sounds/hat";
 import { kick } from "../../lib/sounds/kick";
 import Grid from "../Grid/Grid";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Instrument, useSequencer } from "../../lib/useSequencer";
 import { useAudioEngine } from "../../lib/useAudioEngine";
 import { useInstruments } from "../../lib/useInstruments";
@@ -13,9 +13,17 @@ import {
   updateSample,
   deleteSample,
 } from "../../lib/storage/samplesDB";
+import {
+  loadTrack,
+  buildGridFromPersisted,
+  saveTrack,
+  serializeInstruments,
+  type PersistedTrack,
+} from "../../lib/storage/trackStorage";
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
 import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
+import "./GridSequencer.css";
 
 const DEFAULT_STEPS = 8;
 const DEFAULT_BPM = 80;
@@ -53,18 +61,17 @@ const instrumentDefs: Instrument[] = [
   },
 ];
 
-const setupGrid = (rows: number, columns: number) => {
-  return Array(rows)
-    .fill(0)
-    .map(() => Array(columns).fill(false));
-};
-
 export default function GridSequencer() {
   const { ctxRef, ensureReady } = useAudioEngine();
-  const [steps, setSteps] = useState(DEFAULT_STEPS);
-  const [bpm, setBpm] = useState(DEFAULT_BPM);
-  const [mute, setMute] = useState(false);
-  const [beatsPerBar, setBeatsPerBar] = useState(4);
+
+  // Load saved track once on mount to initialize state
+  const savedTrack = loadTrack();
+  const [steps, setSteps] = useState(savedTrack?.steps ?? DEFAULT_STEPS);
+  const [bpm, setBpm] = useState(savedTrack?.bpm ?? DEFAULT_BPM);
+  const [mute, setMute] = useState(savedTrack?.mute ?? false);
+  const [beatsPerBar, setBeatsPerBar] = useState(savedTrack?.beatsPerBar ?? 4);
+  const [hasRestoredGrid, setHasRestoredGrid] = useState(false);
+
   const {
     instruments: instrumentConfig,
     setSteps: setTrackSteps,
@@ -122,6 +129,53 @@ export default function GridSequencer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!savedTrack || hasRestoredGrid) return;
+
+    if (instrumentConfig.length === 0) return;
+
+    const wantedSampleIds = new Set(
+      savedTrack.instruments
+        .filter((p) => p.kind === "sample" && p.dbId != null)
+        .map((p) => p.dbId as number)
+    );
+    const presentSampleIds = new Set(
+      instrumentConfig
+        .filter((i) => i.dbId != null)
+        .map((i) => i.dbId as number)
+    );
+
+    const hasMissingSamples = Array.from(wantedSampleIds).some(
+      (id) => !presentSampleIds.has(id)
+    );
+    if (hasMissingSamples && wantedSampleIds.size > 0) {
+      return;
+    }
+
+    const restoredGrid = buildGridFromPersisted(instrumentConfig, savedTrack);
+
+    setGrid(restoredGrid);
+
+    instrumentConfig.forEach((inst, idx) => {
+      const match = savedTrack.instruments.find((p) =>
+        inst.dbId != null
+          ? p.kind === "sample" && p.dbId === inst.dbId
+          : p.kind === "builtin" && p.key === inst.key
+      );
+      if (!match) return;
+      if (inst.dbId == null) {
+        if (typeof match.volume === "number" && match.volume !== inst.volume) {
+          setVolumeAt(idx, match.volume);
+        }
+        if (typeof match.muted === "boolean" && match.muted !== inst.muted) {
+          setMutedAt(idx, match.muted);
+        }
+      }
+    });
+
+    setHasRestoredGrid(true);
+  }, [instrumentConfig, hasRestoredGrid]);
+
   const handlePick = async (file: File) => {
     try {
       await ensureReady();
@@ -157,9 +211,42 @@ export default function GridSequencer() {
     }
   };
 
+  useEffect(() => {
+    if (savedTrack && !hasRestoredGrid) {
+      return;
+    }
+
+    try {
+      const instruments = serializeInstruments(
+        instrumentConfig,
+        instrumentGrid,
+        steps
+      );
+      const payload: PersistedTrack = {
+        version: 1,
+        steps,
+        bpm,
+        beatsPerBar,
+        mute,
+        instruments,
+        savedAt: Date.now(),
+      };
+      saveTrack(payload);
+    } catch {}
+  }, [
+    instrumentConfig,
+    instrumentGrid,
+    steps,
+    bpm,
+    beatsPerBar,
+    mute,
+    hasRestoredGrid,
+    savedTrack,
+  ]);
+
   return (
     <div className="app-container">
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <div className="sequencer-header">
         <SampleUploadButton onPick={handlePick} />
       </div>
       <Controllers
@@ -172,50 +259,46 @@ export default function GridSequencer() {
         beatsPerBar={beatsPerBar}
         setBeatsPerBar={setBeatsPerBar}
       />
-      {(() => {
-        return (
-          <Grid
-            data={instrumentGrid}
-            beatsPerBar={beatsPerBar}
-            handleChange={setGrid}
-            renderHeader={(idx) => {
-              const inst = instrumentConfig[idx];
-              if (!inst) return null;
-              return (
-                <InstrumentHeaderControls
-                  name={inst.name}
-                  volume={inst.volume ?? 1}
-                  muted={!!inst.muted}
-                  onChangeVolume={async (v) => {
-                    setVolumeAt(idx, v);
-                    if (inst.dbId != null) {
-                      try {
-                        await updateSample(inst.dbId as number, { volume: v });
-                      } catch {}
-                    }
-                  }}
-                  onToggleMute={async (b) => {
-                    setMutedAt(idx, b);
-                    if (inst.dbId != null) {
-                      try {
-                        await updateSample(inst.dbId as number, { muted: b });
-                      } catch {}
-                    }
-                  }}
-                  onDelete={async () => {
-                    if (inst.dbId != null) {
-                      try {
-                        await deleteSample(inst.dbId as number);
-                      } catch {}
-                    }
-                    deleteAt(idx);
-                  }}
-                />
-              );
-            }}
-          />
-        );
-      })()}
+      <Grid
+        data={instrumentGrid}
+        beatsPerBar={beatsPerBar}
+        handleChange={setGrid}
+        renderHeader={(idx) => {
+          const inst = instrumentConfig[idx];
+          if (!inst) return null;
+          return (
+            <InstrumentHeaderControls
+              name={inst.name}
+              volume={inst.volume ?? 1}
+              muted={!!inst.muted}
+              onChangeVolume={async (v) => {
+                setVolumeAt(idx, v);
+                if (inst.dbId != null) {
+                  try {
+                    await updateSample(inst.dbId as number, { volume: v });
+                  } catch {}
+                }
+              }}
+              onToggleMute={async (b) => {
+                setMutedAt(idx, b);
+                if (inst.dbId != null) {
+                  try {
+                    await updateSample(inst.dbId as number, { muted: b });
+                  } catch {}
+                }
+              }}
+              onDelete={async () => {
+                if (inst.dbId != null) {
+                  try {
+                    await deleteSample(inst.dbId as number);
+                  } catch {}
+                }
+                deleteAt(idx);
+              }}
+            />
+          );
+        }}
+      />
     </div>
   );
 }
