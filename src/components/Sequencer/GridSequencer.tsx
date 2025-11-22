@@ -248,17 +248,17 @@ export default function GridSequencer() {
     <div className="app-container">
       <div className="sequencer-header">
         <SampleUploadButton onPick={handlePick} />
+        <Controllers
+          steps={steps}
+          setSteps={setSteps}
+          bpm={bpm}
+          setBpm={setBpm}
+          mute={mute}
+          setMute={setMute}
+          beatsPerBar={beatsPerBar}
+          setBeatsPerBar={setBeatsPerBar}
+        />
       </div>
-      <Controllers
-        steps={steps}
-        setSteps={setSteps}
-        bpm={bpm}
-        setBpm={setBpm}
-        mute={mute}
-        setMute={setMute}
-        beatsPerBar={beatsPerBar}
-        setBeatsPerBar={setBeatsPerBar}
-      />
       <Grid
         data={instrumentGrid}
         beatsPerBar={beatsPerBar}

@@ -17,17 +17,22 @@ export default function SampleUploadButton({
 
   const handleClick = () => fileInputRef.current?.click();
 
-  const handleChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = async (
+    e
+  ) => {
     const file = e.target.files?.[0];
     e.currentTarget.value = "";
     if (!file) return;
     await onPick(file);
   };
-
   return (
-    <div className={className} style={{ display: "inline-flex", alignItems: "center" }}>
+    <div
+      className={className}
+      style={{ display: "inline-flex", alignItems: "center" }}
+    >
       <button onClick={handleClick}>{label}</button>
       <input
+        title="File"
         ref={fileInputRef}
         type="file"
         accept={accept}
