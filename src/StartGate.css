@@ -1,0 +1,32 @@
+.start-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.start-button {
+  padding: 12px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #5c5c71;
+  color: #fff;
+  border: 1px solid #8888a0;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.start-button:hover {
+  background-color: #6b6b85;
+}
+
+.start-button:active {
+  background-color: #4a4a5a;
+}
+
+.start-error {
+  color: red;
+  font-size: 12px;
+}

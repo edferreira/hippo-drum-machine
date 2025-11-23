@@ -1,15 +1,7 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-  MutableRefObject,
-  useEffect,
-} from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { core } from "./webRenderer";
 
-export function useAudioExport(
-  audioContextRef: MutableRefObject<AudioContext | null>
-) {
+export function useAudioExport(audioContext: AudioContext | null) {
   const [isRecording, setIsRecording] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -23,7 +15,6 @@ export function useAudioExport(
    */
   const connectRecorder = useCallback(
     (audioNode: AudioNode) => {
-      const audioContext = audioContextRef.current;
       if (!audioContext) {
         console.warn("AudioContext not available for recorder");
         return;
@@ -40,13 +31,15 @@ export function useAudioExport(
 
       // Connect audio node to the recording destination
       try {
-        audioNode.connect(destinationRef.current);
-        console.log("Audio node connected to recorder destination");
+        if (destinationRef.current) {
+          audioNode.connect(destinationRef.current);
+          console.log("Audio node connected to recorder destination");
+        }
       } catch (error) {
         console.error("Failed to connect recorder:", error);
       }
     },
-    [audioContextRef]
+    [audioContext]
   );
 
   /**
@@ -181,9 +174,10 @@ export function useAudioExport(
         console.log("Starting recording at pattern start");
         startRecording();
 
-        // Wait for the specified duration (exact duration, no buffer needed now)
+        const cycles = 1;
+        const totalDuration = durationSeconds * cycles;
         await new Promise((resolve) =>
-          setTimeout(resolve, durationSeconds * 1000)
+          setTimeout(resolve, totalDuration * 1000)
         );
 
         await stopRecording(filename);

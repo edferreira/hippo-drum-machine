@@ -4,8 +4,9 @@ import hat from "../../lib/sounds/hat";
 import { kick } from "../../lib/sounds/kick";
 import Grid from "../Grid/Grid";
 import { useEffect, useState } from "react";
-import { Instrument, useSequencer } from "../../lib/useSequencer";
-import { useAudioEngine } from "../../lib/useAudioEngine";
+import { useSequencer } from "../../lib/useSequencer";
+import type { Instrument } from "../../types/audio";
+import { useAudio } from "../../contexts/AudioContext";
 import { useInstruments } from "../../lib/useInstruments";
 import {
   addSample,
@@ -18,8 +19,8 @@ import {
   buildGridFromPersisted,
   saveTrack,
   serializeInstruments,
-  type PersistedTrack,
 } from "../../lib/storage/trackStorage";
+import type { PersistedTrack } from "../../types/audio";
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
 import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
@@ -64,7 +65,7 @@ const instrumentDefs: Instrument[] = [
 ];
 
 export default function GridSequencer() {
-  const { ctxRef, ensureReady } = useAudioEngine();
+  const { audioContext, ensureReady } = useAudio();
 
   // Load saved track once on mount to initialize state
   const savedTrack = loadTrack();
@@ -74,9 +75,9 @@ export default function GridSequencer() {
   const [beatsPerBar, setBeatsPerBar] = useState(savedTrack?.beatsPerBar ?? 4);
   const [hasRestoredGrid, setHasRestoredGrid] = useState(false);
 
-  // Audio export hook - pass the ref itself, not the current value
+  // Audio export hook - pass the audioContext from context
   const { connectRecorder, exportPattern, isExporting } =
-    useAudioExport(ctxRef);
+    useAudioExport(audioContext);
 
   const {
     instruments: instrumentConfig,
@@ -102,15 +103,13 @@ export default function GridSequencer() {
     setTrackSteps(steps);
   }, [steps, setTrackSteps]);
 
-  // Engine initialization is handled by useAudioEngine
-
   // Connect audio export recorder when audio node is available
   useEffect(() => {
     (async () => {
       try {
         await ensureReady();
         const audioNode = getAudioNode();
-        if (audioNode && ctxRef.current) {
+        if (audioNode && audioContext) {
           connectRecorder(audioNode);
         }
       } catch (error) {
@@ -124,12 +123,11 @@ export default function GridSequencer() {
     (async () => {
       try {
         await ensureReady();
-        const ctx = ctxRef.current;
-        if (!ctx) return;
+        if (!audioContext) return;
         const records = await listSamples();
         for (const rec of records) {
           const { vfsKey, name } = await loadSampleBlob(
-            ctx,
+            audioContext,
             rec.blob,
             rec.name
           );
@@ -200,10 +198,9 @@ export default function GridSequencer() {
   const handlePick = async (file: File) => {
     try {
       await ensureReady();
-      const ctx = ctxRef.current;
-      if (!ctx) throw new Error("AudioContext not ready");
+      if (!audioContext) throw new Error("AudioContext not ready");
 
-      const { vfsKey, name } = await loadSample(ctx, file);
+      const { vfsKey, name } = await loadSample(audioContext, file);
 
       const newInstrument: Instrument = {
         key: vfsKey,
@@ -235,7 +232,7 @@ export default function GridSequencer() {
   const handleExport = async () => {
     try {
       await ensureReady();
-      if (!ctxRef.current) return;
+      if (!audioContext) return;
 
       // Calculate duration for one complete cycle through all steps
       // stepHz = (bpm / 60) * (steps / beatsPerBar)

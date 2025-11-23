@@ -1,26 +1,11 @@
 // Local storage persistence for the last opened track
 // Keeps transport and pattern data so the app can restore on reload
 
-import type { Instrument } from "../useSequencer";
-
-export type PersistedInstrument = {
-  kind: "builtin" | "sample";
-  key?: string; // for builtin instruments (e.g., "clap", "hat", "kick")
-  dbId?: number; // for sample instruments, key to IndexedDB record
-  volume?: number;
-  muted?: boolean;
-  pattern: boolean[]; // length === steps
-};
-
-export type PersistedTrack = {
-  version: 1;
-  steps: number;
-  bpm: number;
-  beatsPerBar: number;
-  mute: boolean;
-  instruments: PersistedInstrument[];
-  savedAt: number;
-};
+import type {
+  Instrument,
+  PersistedInstrument,
+  PersistedTrack,
+} from "../../types/audio";
 
 const STORAGE_KEY = "hippo:lastTrack";
 

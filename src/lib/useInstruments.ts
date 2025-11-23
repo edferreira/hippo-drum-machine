@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Instrument } from "./useSequencer";
+import type { Instrument } from "../types/audio";
 
 const setupGrid = (rows: number, columns: number) => {
   return Array(rows)
@@ -7,10 +7,16 @@ const setupGrid = (rows: number, columns: number) => {
     .map(() => Array(columns).fill(false));
 };
 
-export function useInstruments(initialInstruments: Instrument[], initialSteps: number) {
-  const [instruments, setInstruments] = useState<Instrument[]>(initialInstruments);
+export function useInstruments(
+  initialInstruments: Instrument[],
+  initialSteps: number
+) {
+  const [instruments, setInstruments] =
+    useState<Instrument[]>(initialInstruments);
   const [steps, setSteps] = useState<number>(initialSteps);
-  const [grid, setGrid] = useState<boolean[][]>(setupGrid(initialInstruments.length, initialSteps));
+  const [grid, setGrid] = useState<boolean[][]>(
+    setupGrid(initialInstruments.length, initialSteps)
+  );
 
   // When steps change, resize columns while preserving existing pattern where possible
   useEffect(() => {
@@ -28,11 +34,15 @@ export function useInstruments(initialInstruments: Instrument[], initialSteps: n
   }, [steps, instruments.length]);
 
   const setVolumeAt = useCallback((idx: number, vol: number) => {
-    setInstruments((prev) => prev.map((inst, i) => (i === idx ? { ...inst, volume: vol } : inst)));
+    setInstruments((prev) =>
+      prev.map((inst, i) => (i === idx ? { ...inst, volume: vol } : inst))
+    );
   }, []);
 
   const setMutedAt = useCallback((idx: number, muted: boolean) => {
-    setInstruments((prev) => prev.map((inst, i) => (i === idx ? { ...inst, muted } : inst)));
+    setInstruments((prev) =>
+      prev.map((inst, i) => (i === idx ? { ...inst, muted } : inst))
+    );
   }, []);
 
   const deleteAt = useCallback((idx: number) => {
@@ -40,19 +50,22 @@ export function useInstruments(initialInstruments: Instrument[], initialSteps: n
     setGrid((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const addInstrument = useCallback((inst: Instrument) => {
-    setInstruments((prev) => {
-      const exists = prev.some(
-        (p) => p.key === inst.key || (p.dbId != null && p.dbId === inst.dbId)
-      );
-      if (exists) return prev;
-      return [...prev, inst];
-    });
-    setGrid((prev) => {
-      const cols = prev[0]?.length ?? steps;
-      return [...prev, Array(cols).fill(false)];
-    });
-  }, [steps]);
+  const addInstrument = useCallback(
+    (inst: Instrument) => {
+      setInstruments((prev) => {
+        const exists = prev.some(
+          (p) => p.key === inst.key || (p.dbId != null && p.dbId === inst.dbId)
+        );
+        if (exists) return prev;
+        return [...prev, inst];
+      });
+      setGrid((prev) => {
+        const cols = prev[0]?.length ?? steps;
+        return [...prev, Array(cols).fill(false)];
+      });
+    },
+    [steps]
+  );
 
   return {
     instruments,

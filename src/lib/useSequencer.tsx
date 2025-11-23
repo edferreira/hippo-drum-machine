@@ -1,17 +1,7 @@
 import { el } from "@elemaudio/core";
 import { useCallback, useEffect } from "react";
-import { useAudioContext } from "./useAudioContext";
 import { core } from "./webRenderer";
-
-export type Instrument = {
-  key: string;
-  name: string;
-  seqOptions?: any;
-  volume?: number;
-  muted?: boolean;
-  dbId?: number | string;
-  makeNode: (seq: any) => any;
-};
+import type { Instrument } from "../types/audio";
 
 type UseSynthProps = {
   steps: number[][];
