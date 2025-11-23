@@ -9,6 +9,8 @@ type ControllersProps = {
   setBeatsPerBar: (beatPerBar: number) => void;
   mute: boolean;
   setMute: (mute: boolean) => void;
+  onExport?: () => void;
+  isExporting?: boolean;
 };
 
 export default function Controllers({
@@ -20,6 +22,8 @@ export default function Controllers({
   setMute,
   beatsPerBar,
   setBeatsPerBar,
+  onExport,
+  isExporting = false,
 }: ControllersProps) {
   return (
     <div className="controllers">
@@ -69,6 +73,19 @@ export default function Controllers({
           type="checkbox"
         />
       </div>
+      {onExport && (
+        <div className="controller-item">
+          <label>&nbsp;</label>
+          <button
+            className="button-primary"
+            onClick={onExport}
+            disabled={isExporting}
+            aria-label="export pattern"
+          >
+            {isExporting ? "Exporting..." : "Export"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

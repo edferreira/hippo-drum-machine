@@ -24,3 +24,24 @@
   background-color: #3e3e52;
   color: white;
 }
+
+.button-primary {
+  padding: 6px 16px;
+  border-radius: 5px;
+  border: 1px solid #5c5c71;
+  background-color: #6b4cae;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.button-primary:hover:not(:disabled) {
+  background-color: #7d5cc0;
+}
+
+.button-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

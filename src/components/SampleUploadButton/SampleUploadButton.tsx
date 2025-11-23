@@ -26,11 +26,10 @@ export default function SampleUploadButton({
     await onPick(file);
   };
   return (
-    <div
-      className={className}
-      style={{ display: "inline-flex", alignItems: "center" }}
-    >
-      <button onClick={handleClick}>{label}</button>
+    <div className={className}>
+      <button className="button-primary" onClick={handleClick}>
+        {label}
+      </button>
       <input
         title="File"
         ref={fileInputRef}

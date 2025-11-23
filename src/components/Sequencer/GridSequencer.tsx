@@ -23,6 +23,8 @@ import {
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
 import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
+import { useAudioExport } from "../../lib/useAudioExport";
+import { getAudioNode } from "../../lib/webRenderer";
 import "./GridSequencer.css";
 
 const DEFAULT_STEPS = 8;
@@ -72,6 +74,10 @@ export default function GridSequencer() {
   const [beatsPerBar, setBeatsPerBar] = useState(savedTrack?.beatsPerBar ?? 4);
   const [hasRestoredGrid, setHasRestoredGrid] = useState(false);
 
+  // Audio export hook - pass the ref itself, not the current value
+  const { connectRecorder, exportPattern, isExporting } =
+    useAudioExport(ctxRef);
+
   const {
     instruments: instrumentConfig,
     setSteps: setTrackSteps,
@@ -97,6 +103,21 @@ export default function GridSequencer() {
   }, [steps, setTrackSteps]);
 
   // Engine initialization is handled by useAudioEngine
+
+  // Connect audio export recorder when audio node is available
+  useEffect(() => {
+    (async () => {
+      try {
+        await ensureReady();
+        const audioNode = getAudioNode();
+        if (audioNode && ctxRef.current) {
+          connectRecorder(audioNode);
+        }
+      } catch (error) {
+        console.error("Failed to connect audio export recorder:", error);
+      }
+    })();
+  }, [ensureReady, connectRecorder]);
 
   // On mount: load persisted samples and rehydrate instruments
   useEffect(() => {
@@ -211,6 +232,31 @@ export default function GridSequencer() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      await ensureReady();
+      if (!ctxRef.current) return;
+
+      // Calculate duration for one complete cycle through all steps
+      // stepHz = (bpm / 60) * (steps / beatsPerBar)
+      // One cycle duration = steps / stepHz = steps / ((bpm / 60) * (steps / beatsPerBar))
+      // Simplified: (steps * beatsPerBar * 60) / (bpm * steps) = (beatsPerBar * 60) / bpm
+      const stepHz = (bpm / 60) * (steps / beatsPerBar);
+      const durationSeconds = steps / stepHz;
+
+      // Generate filename with timestamp
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, -5);
+      const filename = `drum-pattern-${timestamp}.webm`;
+
+      await exportPattern(durationSeconds, filename);
+    } catch (error) {
+      console.error("Failed to export audio:", error);
+    }
+  };
+
   useEffect(() => {
     if (savedTrack && !hasRestoredGrid) {
       return;
@@ -257,6 +303,8 @@ export default function GridSequencer() {
           setMute={setMute}
           beatsPerBar={beatsPerBar}
           setBeatsPerBar={setBeatsPerBar}
+          onExport={handleExport}
+          isExporting={isExporting}
         />
       </div>
       <Grid
