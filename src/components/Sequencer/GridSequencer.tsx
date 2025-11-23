@@ -1,7 +1,3 @@
-import { el } from "@elemaudio/core";
-import clap from "../../lib/sounds/clap";
-import hat from "../../lib/sounds/hat";
-import { kick } from "../../lib/sounds/kick";
 import { useEffect, useState, lazy, Suspense, useCallback } from "react";
 
 // Lazy load Grid component for code splitting
@@ -10,65 +6,30 @@ import { useSequencer } from "../../lib/useSequencer";
 import type { Instrument } from "../../types/audio";
 import { useAudio } from "../../contexts/AudioContext";
 import { useInstruments } from "../../lib/useInstruments";
+import { useSampleManagement } from "../../lib/useSampleManagement";
+import { useTrackPersistence } from "../../lib/useTrackPersistence";
 import {
-  loadSampleFromFile,
-  loadSampleFromBlob,
-} from "../../lib/audioSampleLoader";
-import {
-  addSample,
   listSamples,
   updateSample,
   deleteSample,
 } from "../../lib/storage/samplesDB";
+import { loadTrack } from "../../lib/storage/trackStorage";
+import { calculatePatternDuration } from "../../lib/utils/timing";
 import {
-  loadTrack,
-  buildGridFromPersisted,
-  saveTrack,
-  serializeInstruments,
-} from "../../lib/storage/trackStorage";
-import type { PersistedTrack } from "../../types/audio";
+  DEFAULT_STEPS,
+  DEFAULT_BPM,
+  DEFAULT_BEATS_PER_BAR,
+  DEFAULT_MUTE,
+  AUDIO_EXPORT_FILENAME_PREFIX,
+  AUDIO_EXPORT_FORMAT,
+} from "../../lib/constants";
+import { DEFAULT_INSTRUMENTS } from "../../config/instruments";
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
 import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
 import { useAudioExport } from "../../lib/useAudioExport";
 import { getAudioNode } from "../../lib/webRenderer";
 import "./GridSequencer.css";
-
-const DEFAULT_STEPS = 16;
-const DEFAULT_BPM = 120;
-
-const instrumentDefs: Instrument[] = [
-  {
-    key: "clap",
-    name: "Clap",
-    seqOptions: {},
-    volume: 0.6,
-    makeNode: (seq: any) => clap(800, 0.02, 0.2, seq),
-  },
-  {
-    key: "hat",
-    name: "Hat",
-    seqOptions: {},
-    volume: 0.75,
-    makeNode: (seq: any) =>
-      hat(
-        // small LFO-style modulation examples implemented in-line
-        el.add(317, el.mul(900, el.cycle(1))),
-        el.add(14000, el.mul(4000, el.cycle(4.5))),
-        0.005,
-        el.add(0.5, el.mul(0.45, el.cycle(4.1))),
-        seq
-      ),
-  },
-  {
-    key: "kick",
-    name: "kick",
-    seqOptions: {},
-    volume: 0.9,
-    makeNode: (seq: any) =>
-      kick(el.const({ value: 0 }), seq, "kick", { gain: 0.8, pop: 1.2 }),
-  },
-];
 
 export default function GridSequencer() {
   const { audioContext, ensureReady } = useAudio();
@@ -77,13 +38,17 @@ export default function GridSequencer() {
   const savedTrack = loadTrack();
   const [steps, setSteps] = useState(savedTrack?.steps ?? DEFAULT_STEPS);
   const [bpm, setBpm] = useState(savedTrack?.bpm ?? DEFAULT_BPM);
-  const [mute, setMute] = useState(savedTrack?.mute ?? false);
-  const [beatsPerBar, setBeatsPerBar] = useState(savedTrack?.beatsPerBar ?? 4);
-  const [hasRestoredGrid, setHasRestoredGrid] = useState(false);
+  const [mute, setMute] = useState(savedTrack?.mute ?? DEFAULT_MUTE);
+  const [beatsPerBar, setBeatsPerBar] = useState(
+    savedTrack?.beatsPerBar ?? DEFAULT_BEATS_PER_BAR
+  );
 
   // Audio export hook - pass the audioContext from context
   const { connectRecorder, exportPattern, isExporting } =
     useAudioExport(audioContext);
+
+  // Sample management hook
+  const { uploadSample, loadSampleFromStorage } = useSampleManagement();
 
   const {
     instruments: instrumentConfig,
@@ -94,7 +59,7 @@ export default function GridSequencer() {
     setMutedAt,
     deleteAt,
     addInstrument,
-  } = useInstruments(instrumentDefs, steps);
+  } = useInstruments(DEFAULT_INSTRUMENTS, steps);
 
   useSequencer({
     steps: instrumentGrid.map((row) => row.map((v) => Number(v))),
@@ -128,23 +93,15 @@ export default function GridSequencer() {
   useEffect(() => {
     (async () => {
       try {
-        await ensureReady();
-        if (!audioContext) return;
         const records = await listSamples();
         for (const rec of records) {
-          const { vfsKey, name } = await loadSampleFromBlob(
-            audioContext,
+          const inst = await loadSampleFromStorage(
             rec.blob,
-            rec.name
+            rec.name,
+            rec.id!,
+            rec.volume,
+            rec.muted
           );
-          const inst: Instrument = {
-            key: vfsKey,
-            name,
-            volume: rec.volume,
-            muted: rec.muted,
-            dbId: rec.id,
-            makeNode: (seq: any) => el.sample({ path: vfsKey }, seq, 1),
-          };
           addInstrument(inst);
         }
       } catch (e) {
@@ -154,82 +111,22 @@ export default function GridSequencer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!savedTrack || hasRestoredGrid) return;
-
-    if (instrumentConfig.length === 0) return;
-
-    const wantedSampleIds = new Set(
-      savedTrack.instruments
-        .filter((p) => p.kind === "sample" && p.dbId != null)
-        .map((p) => p.dbId as number)
-    );
-    const presentSampleIds = new Set(
-      instrumentConfig
-        .filter((i) => i.dbId != null)
-        .map((i) => i.dbId as number)
-    );
-
-    const hasMissingSamples = Array.from(wantedSampleIds).some(
-      (id) => !presentSampleIds.has(id)
-    );
-    if (hasMissingSamples && wantedSampleIds.size > 0) {
-      return;
-    }
-
-    const restoredGrid = buildGridFromPersisted(instrumentConfig, savedTrack);
-
-    setGrid(restoredGrid);
-
-    instrumentConfig.forEach((inst, idx) => {
-      const match = savedTrack.instruments.find((p) =>
-        inst.dbId != null
-          ? p.kind === "sample" && p.dbId === inst.dbId
-          : p.kind === "builtin" && p.key === inst.key
-      );
-      if (!match) return;
-      if (inst.dbId == null) {
-        if (typeof match.volume === "number" && match.volume !== inst.volume) {
-          setVolumeAt(idx, match.volume);
-        }
-        if (typeof match.muted === "boolean" && match.muted !== inst.muted) {
-          setMutedAt(idx, match.muted);
-        }
-      }
-    });
-
-    setHasRestoredGrid(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasRestoredGrid]);
+  // Track persistence - auto-save and restore
+  useTrackPersistence({
+    instruments: instrumentConfig,
+    grid: instrumentGrid,
+    steps,
+    bpm,
+    beatsPerBar,
+    mute,
+    onRestoreGrid: setGrid,
+    onRestoreVolume: setVolumeAt,
+    onRestoreMuted: setMutedAt,
+  });
 
   const handlePick = async (file: File) => {
     try {
-      await ensureReady();
-      if (!audioContext) throw new Error("AudioContext not ready");
-
-      const { vfsKey, name } = await loadSampleFromFile(audioContext, file);
-
-      const newInstrument: Instrument = {
-        key: vfsKey,
-        name,
-        volume: 1,
-        muted: false,
-        makeNode: (seq: any) => el.sample({ path: vfsKey }, seq, 1),
-      };
-
-      // Persist the uploaded sample (store original file blob)
-      try {
-        const dbId = await addSample({
-          name,
-          blob: file,
-          volume: 1,
-          muted: false,
-        });
-        newInstrument.dbId = dbId;
-      } catch (e) {
-        console.warn("Failed to persist sample:", e);
-      }
-
+      const newInstrument = await uploadSample(file);
       addInstrument(newInstrument);
     } catch (err) {
       console.error("Failed to load sample:", err);
@@ -241,58 +138,20 @@ export default function GridSequencer() {
       await ensureReady();
       if (!audioContext) return;
 
-      // Calculate duration for one complete cycle through all steps
-      // stepHz = (bpm / 60) * (steps / beatsPerBar)
-      // One cycle duration = steps / stepHz = steps / ((bpm / 60) * (steps / beatsPerBar))
-      // Simplified: (steps * beatsPerBar * 60) / (bpm * steps) = (beatsPerBar * 60) / bpm
-      const stepHz = (bpm / 60) * (steps / beatsPerBar);
-      const durationSeconds = steps / stepHz;
+      const durationSeconds = calculatePatternDuration(steps, bpm, beatsPerBar);
 
       // Generate filename with timestamp
       const timestamp = new Date()
         .toISOString()
         .replace(/[:.]/g, "-")
         .slice(0, -5);
-      const filename = `drum-pattern-${timestamp}.webm`;
+      const filename = `${AUDIO_EXPORT_FILENAME_PREFIX}-${timestamp}.${AUDIO_EXPORT_FORMAT}`;
 
       await exportPattern(durationSeconds, filename);
     } catch (error) {
       console.error("Failed to export audio:", error);
     }
   };
-
-  useEffect(() => {
-    if (savedTrack && !hasRestoredGrid) {
-      return;
-    }
-
-    try {
-      const instruments = serializeInstruments(
-        instrumentConfig,
-        instrumentGrid,
-        steps
-      );
-      const payload: PersistedTrack = {
-        version: 1,
-        steps,
-        bpm,
-        beatsPerBar,
-        mute,
-        instruments,
-        savedAt: Date.now(),
-      };
-      saveTrack(payload);
-    } catch {}
-  }, [
-    instrumentConfig,
-    instrumentGrid,
-    steps,
-    bpm,
-    beatsPerBar,
-    mute,
-    hasRestoredGrid,
-    savedTrack,
-  ]);
 
   const renderHeader = useCallback(
     (idx: number) => {

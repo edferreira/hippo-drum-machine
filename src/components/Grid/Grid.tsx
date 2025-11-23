@@ -1,6 +1,6 @@
 import "./Grid.css";
-import { memo, useCallback, useEffect, useState } from "react";
-import { core } from "../../lib/webRenderer";
+import { memo, useCallback, useState } from "react";
+import { useCurrentStep } from "../../lib/useSnapshotEvent";
 
 type GridProps = {
   data: boolean[][];
@@ -8,33 +8,6 @@ type GridProps = {
   renderHeader?: (rowIndex: number) => React.ReactNode;
   currentStep?: number;
   beatsPerBar?: number;
-};
-
-/**
- * Hook to track the current playback step position
- * Listens to snapshot events from the audio renderer
- * Returns the current step index (0-based)
- */
-const useCurrentStep = () => {
-  const [pos, setPos] = useState(-1);
-
-  const handleSnapshot = useCallback((e: { source?: string; data: number }) => {
-    if (e?.source === "snapshot:patternpos") {
-      // When pattern loops back to start (data === 0), reset to 0
-      // Otherwise increment from previous position
-      setPos((prevPos) => (e.data === 0 ? 0 : prevPos + 1));
-    }
-  }, []);
-
-  useEffect(() => {
-    core.on("snapshot", handleSnapshot);
-
-    return () => {
-      core.off("snapshot", handleSnapshot);
-    };
-  }, [handleSnapshot]);
-
-  return pos;
 };
 
 /**

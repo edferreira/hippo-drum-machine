@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import { core } from "./webRenderer";
+import { useSnapshotEvent } from "./useSnapshotEvent";
 
 export function useAudioExport(audioContext: AudioContext | null) {
   const [isRecording, setIsRecording] = useState(false);
@@ -143,13 +144,13 @@ export function useAudioExport(audioContext: AudioContext | null) {
    */
   const waitForPatternStart = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
+      // Use a one-time event listener
       const handler = (e: { source?: string; data: number }) => {
         if (e?.source === "snapshot:patternpos" && e.data === 0) {
           core.off("snapshot", handler);
           resolve();
         }
       };
-
       core.on("snapshot", handler);
     });
   }, []);
