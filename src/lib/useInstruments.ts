@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Instrument } from "../types/audio";
 
 const setupGrid = (rows: number, columns: number) => {
@@ -18,10 +18,17 @@ export function useInstruments(
     setupGrid(initialInstruments.length, initialSteps)
   );
 
+  // Memoize instrument count to avoid unnecessary grid updates
+  const instrumentCount = useMemo(
+    () => instruments.length,
+    [instruments.length]
+  );
+
   // When steps change, resize columns while preserving existing pattern where possible
+  // This effect optimizes grid operations by memoizing the grid transformation
   useEffect(() => {
     setGrid((prev) => {
-      const rows = instruments.length;
+      const rows = instrumentCount;
       const cols = steps;
       const next = setupGrid(rows, cols);
       for (let r = 0; r < rows; r++) {
@@ -31,7 +38,7 @@ export function useInstruments(
       }
       return next;
     });
-  }, [steps, instruments.length]);
+  }, [steps, instrumentCount]);
 
   const setVolumeAt = useCallback((idx: number, vol: number) => {
     setInstruments((prev) =>

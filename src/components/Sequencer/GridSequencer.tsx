@@ -2,12 +2,18 @@ import { el } from "@elemaudio/core";
 import clap from "../../lib/sounds/clap";
 import hat from "../../lib/sounds/hat";
 import { kick } from "../../lib/sounds/kick";
-import Grid from "../Grid/Grid";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
+
+// Lazy load Grid component for code splitting
+const Grid = lazy(() => import("../Grid/Grid"));
 import { useSequencer } from "../../lib/useSequencer";
 import type { Instrument } from "../../types/audio";
 import { useAudio } from "../../contexts/AudioContext";
 import { useInstruments } from "../../lib/useInstruments";
+import {
+  loadSampleFromFile,
+  loadSampleFromBlob,
+} from "../../lib/audioSampleLoader";
 import {
   addSample,
   listSamples,
@@ -28,8 +34,8 @@ import { useAudioExport } from "../../lib/useAudioExport";
 import { getAudioNode } from "../../lib/webRenderer";
 import "./GridSequencer.css";
 
-const DEFAULT_STEPS = 8;
-const DEFAULT_BPM = 80;
+const DEFAULT_STEPS = 16;
+const DEFAULT_BPM = 120;
 
 const instrumentDefs: Instrument[] = [
   {
@@ -90,7 +96,7 @@ export default function GridSequencer() {
     addInstrument,
   } = useInstruments(instrumentDefs, steps);
 
-  const { loadSample, loadSampleBlob } = useSequencer({
+  useSequencer({
     steps: instrumentGrid.map((row) => row.map((v) => Number(v))),
     instruments: instrumentConfig,
     bpm,
@@ -126,7 +132,7 @@ export default function GridSequencer() {
         if (!audioContext) return;
         const records = await listSamples();
         for (const rec of records) {
-          const { vfsKey, name } = await loadSampleBlob(
+          const { vfsKey, name } = await loadSampleFromBlob(
             audioContext,
             rec.blob,
             rec.name
@@ -200,7 +206,7 @@ export default function GridSequencer() {
       await ensureReady();
       if (!audioContext) throw new Error("AudioContext not ready");
 
-      const { vfsKey, name } = await loadSample(audioContext, file);
+      const { vfsKey, name } = await loadSampleFromFile(audioContext, file);
 
       const newInstrument: Instrument = {
         key: vfsKey,
@@ -304,46 +310,50 @@ export default function GridSequencer() {
           isExporting={isExporting}
         />
       </div>
-      <Grid
-        data={instrumentGrid}
-        beatsPerBar={beatsPerBar}
-        handleChange={setGrid}
-        renderHeader={(idx) => {
-          const inst = instrumentConfig[idx];
-          if (!inst) return null;
-          return (
-            <InstrumentHeaderControls
-              name={inst.name}
-              volume={inst.volume ?? 1}
-              muted={!!inst.muted}
-              onChangeVolume={async (v) => {
-                setVolumeAt(idx, v);
-                if (inst.dbId != null) {
-                  try {
-                    await updateSample(inst.dbId as number, { volume: v });
-                  } catch {}
-                }
-              }}
-              onToggleMute={async (b) => {
-                setMutedAt(idx, b);
-                if (inst.dbId != null) {
-                  try {
-                    await updateSample(inst.dbId as number, { muted: b });
-                  } catch {}
-                }
-              }}
-              onDelete={async () => {
-                if (inst.dbId != null) {
-                  try {
-                    await deleteSample(inst.dbId as number);
-                  } catch {}
-                }
-                deleteAt(idx);
-              }}
-            />
-          );
-        }}
-      />
+      <Suspense
+        fallback={<div className="loading-grid">Loading sequencer...</div>}
+      >
+        <Grid
+          data={instrumentGrid}
+          beatsPerBar={beatsPerBar}
+          handleChange={setGrid}
+          renderHeader={(idx) => {
+            const inst = instrumentConfig[idx];
+            if (!inst) return null;
+            return (
+              <InstrumentHeaderControls
+                name={inst.name}
+                volume={inst.volume ?? 1}
+                muted={!!inst.muted}
+                onChangeVolume={async (v) => {
+                  setVolumeAt(idx, v);
+                  if (inst.dbId != null) {
+                    try {
+                      await updateSample(inst.dbId as number, { volume: v });
+                    } catch {}
+                  }
+                }}
+                onToggleMute={async (b) => {
+                  setMutedAt(idx, b);
+                  if (inst.dbId != null) {
+                    try {
+                      await updateSample(inst.dbId as number, { muted: b });
+                    } catch {}
+                  }
+                }}
+                onDelete={async () => {
+                  if (inst.dbId != null) {
+                    try {
+                      await deleteSample(inst.dbId as number);
+                    } catch {}
+                  }
+                  deleteAt(idx);
+                }}
+              />
+            );
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -10,17 +10,21 @@ type GridProps = {
   beatsPerBar?: number;
 };
 
-const useCurrentStep = (size: number) => {
+/**
+ * Hook to track the current playback step position
+ * Listens to snapshot events from the audio renderer
+ * Returns the current step index (0-based)
+ */
+const useCurrentStep = () => {
   const [pos, setPos] = useState(-1);
 
-  const handleSnapshot = useCallback(
-    (e: { source?: string; data: number }) => {
-      if (e?.source === "snapshot:patternpos") {
-        setPos((prevPos) => (e.data === 0 ? 0 : prevPos + 1));
-      }
-    },
-    [size]
-  );
+  const handleSnapshot = useCallback((e: { source?: string; data: number }) => {
+    if (e?.source === "snapshot:patternpos") {
+      // When pattern loops back to start (data === 0), reset to 0
+      // Otherwise increment from previous position
+      setPos((prevPos) => (e.data === 0 ? 0 : prevPos + 1));
+    }
+  }, []);
 
   useEffect(() => {
     core.on("snapshot", handleSnapshot);
@@ -41,7 +45,7 @@ const Grid: React.FC<GridProps> = ({
 }) => {
   const [currentAction, setCurrentAction] = useState<boolean>();
 
-  const currentStep = useCurrentStep(data[0].length);
+  const currentStep = useCurrentStep();
 
   const handleToggle = (
     selectedRowIndex: number,

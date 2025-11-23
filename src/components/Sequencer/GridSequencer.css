@@ -5,3 +5,12 @@
   flex: 1;
   justify-content: space-between;
 }
+
+.loading-grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #8888a0;
+  font-size: 14px;
+}

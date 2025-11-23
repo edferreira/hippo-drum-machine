@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import "./SampleUploadButton.css";
 
 type Props = {
   onPick: (file: File) => Promise<void> | void;
@@ -35,7 +36,7 @@ export default function SampleUploadButton({
         ref={fileInputRef}
         type="file"
         accept={accept}
-        style={{ display: "none" }}
+        className="file-input-hidden"
         onChange={handleChange}
       />
     </div>

@@ -1,0 +1,37 @@
+.knob {
+  border-radius: 50%;
+  background: var(--knob-bg, #5c5c71);
+  border: 1px solid #8888a0;
+  position: relative;
+  touch-action: none;
+  cursor: ns-resize;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--knob-size, 28px);
+  height: var(--knob-size, 28px);
+}
+
+.knob--active {
+  background: #6b6b85;
+}
+
+.knob__indicator {
+  width: 2px;
+  height: var(--indicator-height, 11.2px);
+  background: #fff;
+  transform: rotate(var(--indicator-angle, 0deg))
+    translateY(var(--indicator-offset, -5.04px));
+  transform-origin: bottom center;
+  border-radius: 1px;
+  position: absolute;
+  bottom: var(--indicator-bottom, 14px);
+}
+
+.knob__value {
+  position: absolute;
+  font-size: var(--value-font-size, 10.64px);
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+}

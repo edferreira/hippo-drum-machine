@@ -1,4 +1,5 @@
 import Knob from "../Knob/Knob";
+import "./InstrumentHeaderControls.css";
 
 type Props = {
   name: string;
@@ -25,7 +26,7 @@ export default function InstrumentHeaderControls({
 }: Props) {
   return (
     <div className={className}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="instrument-header-controls">
         <Knob
           value={volume}
           onChange={onChangeVolume}
@@ -34,29 +35,21 @@ export default function InstrumentHeaderControls({
           format={(v) => `${Math.round(v * 100)}%`}
           showValue={false}
         />
-        <p className="instrument" style={{ margin: 0, flex: 1 }} title={name}>
+        <p className="instrument instrument-name" title={name}>
           {name}
         </p>
-        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <label className="instrument-mute-label">
           <input
             type="checkbox"
             checked={!!muted}
             onChange={(e) => onToggleMute(e.target.checked)}
           />
-          <span style={{ color: "#ccc", fontSize: 12 }}>M</span>
+          <span className="instrument-mute-text">M</span>
         </label>
         <button
           onClick={onDelete}
           title="Delete track"
-          style={{
-            background: "transparent",
-            border: "1px solid #5c5c71",
-            color: "#ddd",
-            borderRadius: 4,
-            padding: "2px 6px",
-            lineHeight: 1,
-            cursor: "pointer",
-          }}
+          className="instrument-delete-button"
         >
           ×
         </button>

@@ -1,0 +1,39 @@
+.instrument-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.instrument-name {
+  margin: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instrument-mute-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.instrument-mute-text {
+  color: #ccc;
+  font-size: 12px;
+}
+
+.instrument-delete-button {
+  background: transparent;
+  border: 1px solid #5c5c71;
+  color: #ddd;
+  border-radius: 4px;
+  padding: 2px 6px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.instrument-delete-button:hover {
+  background-color: #5c5c71;
+}
