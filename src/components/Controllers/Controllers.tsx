@@ -31,8 +31,7 @@ export default function Controllers({
         <label htmlFor="steps">Steps</label>
         <input
           aria-label="steps"
-          min={2}
-          max={24}
+          min={1}
           id="steps"
           value={steps}
           type="number"
@@ -40,11 +39,15 @@ export default function Controllers({
         />
       </div>
       <div className="controller-item">
-        <label htmlFor="beatPerBar">BPB</label>
+        <label
+          htmlFor="beatPerBar"
+          title="Steps per beat (1=♩, 2=♪, 4=♬, 8=♬♬)"
+        >
+          Steps/Beat
+        </label>
         <input
-          aria-label="beats per bar"
+          aria-label="steps per beat"
           min={1}
-          max={24}
           id="beatPerBar"
           value={beatsPerBar}
           type="number"
@@ -56,7 +59,7 @@ export default function Controllers({
         <input
           aria-label="bpm"
           id="bpm"
-          min={0}
+          min={1}
           max={400}
           value={bpm}
           type="number"

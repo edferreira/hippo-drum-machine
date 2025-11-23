@@ -41,8 +41,17 @@ export const useSequencer = ({
         }
         return;
       }
-      // Steps per second, assuming the pattern spans one bar
-      const stepHz = (bpm / 60) * (stepsPerPattern / beatsPerBar);
+
+      // Calculate step frequency
+      // NOTE: beatsPerBar is misleadingly named - it actually means "stepsPerBeat"
+      // (how many steps equal one quarter note beat)
+      //
+      // Formula: stepHz = (beats per second) * (steps per beat)
+      // Example: 120 BPM, 4 steps per beat (16th notes)
+      //   → 2 beats/sec * 4 steps/beat = 8 steps/sec
+      const stepsPerBeat = beatsPerBar;
+      const beatsPerSecond = bpm / 60;
+      const stepHz = beatsPerSecond * stepsPerBeat;
       const tick = el.train(el.const({ key: "tick:hz", value: stepHz }));
 
       // Sync pulse once per pattern (first step high, others 0)
