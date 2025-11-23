@@ -2,7 +2,7 @@ import { el } from "@elemaudio/core";
 import clap from "../../lib/sounds/clap";
 import hat from "../../lib/sounds/hat";
 import { kick } from "../../lib/sounds/kick";
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense, useCallback } from "react";
 
 // Lazy load Grid component for code splitting
 const Grid = lazy(() => import("../Grid/Grid"));
@@ -199,7 +199,8 @@ export default function GridSequencer() {
     });
 
     setHasRestoredGrid(true);
-  }, [instrumentConfig, hasRestoredGrid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRestoredGrid]);
 
   const handlePick = async (file: File) => {
     try {
@@ -293,6 +294,45 @@ export default function GridSequencer() {
     savedTrack,
   ]);
 
+  const renderHeader = useCallback(
+    (idx: number) => {
+      const inst = instrumentConfig[idx];
+      if (!inst) return null;
+      return (
+        <InstrumentHeaderControls
+          name={inst.name}
+          volume={inst.volume ?? 1}
+          muted={!!inst.muted}
+          onChangeVolume={async (v) => {
+            setVolumeAt(idx, v);
+            if (inst.dbId != null) {
+              try {
+                await updateSample(inst.dbId as number, { volume: v });
+              } catch {}
+            }
+          }}
+          onToggleMute={async (b) => {
+            setMutedAt(idx, b);
+            if (inst.dbId != null) {
+              try {
+                await updateSample(inst.dbId as number, { muted: b });
+              } catch {}
+            }
+          }}
+          onDelete={async () => {
+            if (inst.dbId != null) {
+              try {
+                await deleteSample(inst.dbId as number);
+              } catch {}
+            }
+            deleteAt(idx);
+          }}
+        />
+      );
+    },
+    [instrumentConfig, setVolumeAt, setMutedAt, deleteAt]
+  );
+
   return (
     <div className="app-container">
       <div className="sequencer-header">
@@ -317,41 +357,7 @@ export default function GridSequencer() {
           data={instrumentGrid}
           beatsPerBar={beatsPerBar}
           handleChange={setGrid}
-          renderHeader={(idx) => {
-            const inst = instrumentConfig[idx];
-            if (!inst) return null;
-            return (
-              <InstrumentHeaderControls
-                name={inst.name}
-                volume={inst.volume ?? 1}
-                muted={!!inst.muted}
-                onChangeVolume={async (v) => {
-                  setVolumeAt(idx, v);
-                  if (inst.dbId != null) {
-                    try {
-                      await updateSample(inst.dbId as number, { volume: v });
-                    } catch {}
-                  }
-                }}
-                onToggleMute={async (b) => {
-                  setMutedAt(idx, b);
-                  if (inst.dbId != null) {
-                    try {
-                      await updateSample(inst.dbId as number, { muted: b });
-                    } catch {}
-                  }
-                }}
-                onDelete={async () => {
-                  if (inst.dbId != null) {
-                    try {
-                      await deleteSample(inst.dbId as number);
-                    } catch {}
-                  }
-                  deleteAt(idx);
-                }}
-              />
-            );
-          }}
+          renderHeader={renderHeader}
         />
       </Suspense>
     </div>
