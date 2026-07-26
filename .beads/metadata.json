@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "hippo_drum_machine",
+  "project_id": "1a4746ce-cd68-4356-812b-872c7c36799b"
+}
