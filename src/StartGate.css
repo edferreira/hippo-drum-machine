@@ -5,28 +5,29 @@
   height: 100vh;
   flex-direction: column;
   gap: 12px;
+  background: #121214;
 }
 
 .start-button {
   padding: 12px 20px;
   font-size: 16px;
   cursor: pointer;
-  background-color: #5c5c71;
-  color: #fff;
-  border: 1px solid #8888a0;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  background-color: #2a2a35;
+  color: #d0d0d8;
+  border: 1px solid #3a3a45;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
 }
 
 .start-button:hover {
-  background-color: #6b6b85;
+  background-color: #353545;
 }
 
 .start-button:active {
-  background-color: #4a4a5a;
+  background-color: #1e1e24;
 }
 
 .start-error {
-  color: red;
+  color: #e05555;
   font-size: 12px;
 }
