@@ -1,4 +1,5 @@
 import "./Controllers.css";
+import Knob from "../Knob/Knob";
 import { PRESETS } from "../../config/presets";
 
 type ControllersProps = {
@@ -99,16 +100,15 @@ export default function Controllers({
           onChange={(e) => setBpm(Number(e.target.value))}
         />
       </div>
-      <div className="controller-item">
-        <label htmlFor="volume">Vol</label>
-        <input
-          aria-label="volume"
-          id="volume"
+      <div className="controller-item" style={{ alignItems: 'center' }}>
+        <label>Vol</label>
+        <Knob
+          value={volume}
+          onChange={setVolume}
+          size={36}
           min={0}
-          max={100}
-          value={Math.round(volume * 100)}
-          type="range"
-          onChange={(e) => setVolume(Number(e.target.value) / 100)}
+          max={1}
+          format={(v) => Math.round(v * 100) + '%'}
         />
       </div>
       <div className="controller-item">
