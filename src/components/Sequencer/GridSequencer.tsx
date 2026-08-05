@@ -24,6 +24,7 @@ import {
   AUDIO_EXPORT_FORMAT,
 } from "../../lib/constants";
 import { DEFAULT_INSTRUMENTS } from "../../config/instruments";
+import { PRESETS } from "../../config/presets";
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
 import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
@@ -37,6 +38,7 @@ export default function GridSequencer() {
   // Load saved track once on mount to initialize state
   const savedTrack = loadTrack();
   const [bpm, setBpm] = useState(savedTrack?.bpm ?? DEFAULT_BPM);
+  const [volume, setVolume] = useState(1);
   const [mute, setMute] = useState(savedTrack?.mute ?? DEFAULT_MUTE);
   const [beatsPerBar, setBeatsPerBar] = useState(
     savedTrack?.beatsPerBar ?? DEFAULT_BEATS_PER_BAR
@@ -73,6 +75,7 @@ export default function GridSequencer() {
     steps: mappedSteps,
     instruments: instrumentConfig,
     bpm,
+    volume,
     mute,
     beatsPerBar,
   });
@@ -124,6 +127,13 @@ export default function GridSequencer() {
     onRestoreVolume: setVolumeAt,
     onRestoreMuted: setMutedAt,
   });
+
+  const handleSelectPreset = useCallback((idx: number) => {
+    const preset = PRESETS[idx];
+    if (!preset) return;
+    setGrid(preset.grid);
+    setTrackSteps(preset.steps);
+  }, [setGrid, setTrackSteps]);
 
   const handlePick = async (file: File) => {
     try {
@@ -202,10 +212,13 @@ export default function GridSequencer() {
           setSteps={setTrackSteps}
           bpm={bpm}
           setBpm={setBpm}
+          volume={volume}
+          setVolume={setVolume}
           mute={mute}
           setMute={setMute}
           beatsPerBar={beatsPerBar}
           setBeatsPerBar={setBeatsPerBar}
+          onSelectPreset={handleSelectPreset}
           onRestart={restart}
           onExport={handleExport}
           isExporting={isExporting}

@@ -1,14 +1,18 @@
 import "./Controllers.css";
+import { PRESETS } from "../../config/presets";
 
 type ControllersProps = {
   steps: number;
   setSteps: (steps: number) => void;
   bpm: number;
   setBpm: (bpm: number) => void;
+  volume: number;
+  setVolume: (volume: number) => void;
   beatsPerBar: number;
   setBeatsPerBar: (beatPerBar: number) => void;
   mute: boolean;
   setMute: (mute: boolean) => void;
+  onSelectPreset?: (presetIndex: number) => void;
   onRestart?: () => void;
   onExport?: () => void;
   isExporting?: boolean;
@@ -19,16 +23,43 @@ export default function Controllers({
   setSteps,
   bpm,
   setBpm,
+  volume,
+  setVolume,
   mute,
   setMute,
   beatsPerBar,
   setBeatsPerBar,
+  onSelectPreset,
+  onRestart,
   onExport,
   isExporting = false,
-  onRestart,
 }: ControllersProps) {
   return (
     <div className="controllers">
+      {onSelectPreset && (
+        <div className="controller-item">
+          <label htmlFor="preset">Preset</label>
+          <select
+            id="preset"
+            aria-label="preset"
+            onChange={(e) => {
+              const idx = Number(e.target.value);
+              if (idx >= 0) onSelectPreset(idx);
+              e.target.value = "-1";
+            }}
+            defaultValue="-1"
+          >
+            <option value="-1" disabled>
+              Select...
+            </option>
+            {PRESETS.map((p, i) => (
+              <option key={i} value={i}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="controller-item">
         <label htmlFor="steps">Steps</label>
         <input
@@ -69,6 +100,18 @@ export default function Controllers({
         />
       </div>
       <div className="controller-item">
+        <label htmlFor="volume">Vol</label>
+        <input
+          aria-label="volume"
+          id="volume"
+          min={0}
+          max={100}
+          value={Math.round(volume * 100)}
+          type="range"
+          onChange={(e) => setVolume(Number(e.target.value) / 100)}
+        />
+      </div>
+      <div className="controller-item">
         <label htmlFor="mute">Mute</label>
         <input
           aria-label="mute"
@@ -78,6 +121,18 @@ export default function Controllers({
           type="checkbox"
         />
       </div>
+      {onRestart && (
+        <div className="controller-item">
+          <label>&nbsp;</label>
+          <button
+            className="button-primary"
+            onClick={onRestart}
+            aria-label="restart pattern"
+          >
+            Restart
+          </button>
+        </div>
+      )}
       {onExport && (
         <div className="controller-item">
           <label>&nbsp;</label>

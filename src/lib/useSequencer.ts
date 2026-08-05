@@ -7,6 +7,7 @@ type UseSynthProps = {
   steps: number[][];
   instruments: Instrument[];
   bpm?: number;
+  volume?: number;
   mute?: boolean;
   beatsPerBar?: number;
 };
@@ -15,6 +16,7 @@ export const useSequencer = ({
   steps,
   instruments,
   bpm = 120,
+  volume = 1,
   mute = false,
   beatsPerBar = 4,
 }: UseSynthProps) => {
@@ -93,8 +95,8 @@ export const useSequencer = ({
       // to mask transient from graph rebuild
       const fade = el.adsr(0.005, 0, 1, 0, el.const({ value: 1 }));
 
-      // Master gain
-      const masterGain = mute ? 0.0001 : 1;
+      // Master gain (volume * mute gate; 0.0001 keeps graph alive)
+      const masterGain = mute ? 0.0001 : volume;
       left = el.mul(el.const({ value: masterGain }), left);
       left = el.mul(fade, left);
       right = el.mul(el.const({ value: masterGain }), right);
@@ -106,7 +108,7 @@ export const useSequencer = ({
     } catch (error) {
       console.error("Error in useSynth render:", error);
     }
-  }, [steps, instruments, bpm, mute, beatsPerBar]);
+  }, [steps, instruments, bpm, volume, mute, beatsPerBar]);
 
   // Render whenever dependencies change (including step edits)
   useEffect(() => {
