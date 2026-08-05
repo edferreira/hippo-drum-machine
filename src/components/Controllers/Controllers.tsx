@@ -9,6 +9,7 @@ type ControllersProps = {
   setBeatsPerBar: (beatPerBar: number) => void;
   mute: boolean;
   setMute: (mute: boolean) => void;
+  onRestart?: () => void;
   onExport?: () => void;
   isExporting?: boolean;
 };
@@ -24,6 +25,7 @@ export default function Controllers({
   setBeatsPerBar,
   onExport,
   isExporting = false,
+  onRestart,
 }: ControllersProps) {
   return (
     <div className="controllers">

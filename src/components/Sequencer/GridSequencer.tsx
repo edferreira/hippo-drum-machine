@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, useCallback } from "react";
+import { useEffect, useState, lazy, Suspense, useCallback, useMemo } from "react";
 
 // Lazy load Grid component for code splitting
 const Grid = lazy(() => import("../Grid/Grid"));
@@ -36,7 +36,6 @@ export default function GridSequencer() {
 
   // Load saved track once on mount to initialize state
   const savedTrack = loadTrack();
-  const [steps, setSteps] = useState(savedTrack?.steps ?? DEFAULT_STEPS);
   const [bpm, setBpm] = useState(savedTrack?.bpm ?? DEFAULT_BPM);
   const [mute, setMute] = useState(savedTrack?.mute ?? DEFAULT_MUTE);
   const [beatsPerBar, setBeatsPerBar] = useState(
@@ -50,6 +49,7 @@ export default function GridSequencer() {
   // Sample management hook
   const { uploadSample, loadSampleFromStorage } = useSampleManagement();
 
+  const initialSteps = savedTrack?.steps ?? DEFAULT_STEPS;
   const {
     instruments: instrumentConfig,
     setSteps: setTrackSteps,
@@ -59,22 +59,23 @@ export default function GridSequencer() {
     setMutedAt,
     deleteAt,
     addInstrument,
-  } = useInstruments(DEFAULT_INSTRUMENTS, steps);
+  } = useInstruments(DEFAULT_INSTRUMENTS, initialSteps);
 
-  useSequencer({
-    steps: instrumentGrid.map((row) => row.map((v) => Number(v))),
+  // Derive steps from grid so they never go out of sync
+  const steps = instrumentGrid[0]?.length ?? initialSteps;
+
+  const mappedSteps = useMemo(
+    () => instrumentGrid.map((row) => row.map((v) => Number(v))),
+    [instrumentGrid]
+  );
+
+  const { restart } = useSequencer({
+    steps: mappedSteps,
     instruments: instrumentConfig,
     bpm,
     mute,
     beatsPerBar,
   });
-
-  useEffect(() => {
-    // propagate steps change to instrument grid manager
-    setTrackSteps(steps);
-  }, [steps, setTrackSteps]);
-
-  // Connect audio export recorder when audio node is available
   useEffect(() => {
     (async () => {
       try {
@@ -198,13 +199,14 @@ export default function GridSequencer() {
         <SampleUploadButton onPick={handlePick} />
         <Controllers
           steps={steps}
-          setSteps={setSteps}
+          setSteps={setTrackSteps}
           bpm={bpm}
           setBpm={setBpm}
           mute={mute}
           setMute={setMute}
           beatsPerBar={beatsPerBar}
           setBeatsPerBar={setBeatsPerBar}
+          onRestart={restart}
           onExport={handleExport}
           isExporting={isExporting}
         />
