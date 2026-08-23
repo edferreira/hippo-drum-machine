@@ -48,9 +48,10 @@ export const useSequencer = ({
         el.const({ key: "tick:hz", value: stepHz })
       );
 
-      // Sync pulse once per pattern
+      // Sync pulse once per pattern (keyed so pattern-length changes don't reset position)
       const sync = el.seq2(
         {
+          key: "sync",
           seq: [1, ...Array(Math.max(0, stepsPerPattern - 1)).fill(0)],
           hold: true,
         },
@@ -58,9 +59,10 @@ export const useSequencer = ({
         0
       );
 
-      // Build sequences for each instrument
+      // Build sequences for each instrument. Keyed so toggling a cell
+      // updates the seq data in place without resetting position.
       const seqs = instruments.map((inst, i) =>
-        el.seq({ seq: steps[i] }, tick, sync)
+        el.seq({ key: `seq:${i}`, seq: steps[i] }, tick, sync)
       );
 
       // Create audio nodes for each instrument
