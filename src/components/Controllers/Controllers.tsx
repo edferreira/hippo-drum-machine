@@ -1,5 +1,6 @@
 import "./Controllers.css";
 import Knob from "../Knob/Knob";
+import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
 import { PRESETS } from "../../config/presets";
 
 type ControllersProps = {
@@ -14,7 +15,7 @@ type ControllersProps = {
   mute: boolean;
   setMute: (mute: boolean) => void;
   onSelectPreset?: (presetIndex: number) => void;
-  onRestart?: () => void;
+  onPickSample?: (file: File) => Promise<void> | void;
   onExport?: () => void;
   isExporting?: boolean;
 };
@@ -31,12 +32,18 @@ export default function Controllers({
   beatsPerBar,
   setBeatsPerBar,
   onSelectPreset,
-  onRestart,
+  onPickSample,
   onExport,
   isExporting = false,
 }: ControllersProps) {
   return (
     <div className="controllers">
+      {onPickSample && (
+        <div className="controller-item">
+          <label>&nbsp;</label>
+          <SampleUploadButton onPick={onPickSample} />
+        </div>
+      )}
       {onSelectPreset && (
         <div className="controller-item">
           <label htmlFor="preset">Preset</label>
@@ -121,18 +128,6 @@ export default function Controllers({
           type="checkbox"
         />
       </div>
-      {onRestart && (
-        <div className="controller-item">
-          <label>&nbsp;</label>
-          <button
-            className="button-primary"
-            onClick={onRestart}
-            aria-label="restart pattern"
-          >
-            Restart
-          </button>
-        </div>
-      )}
       {onExport && (
         <div className="controller-item">
           <label>&nbsp;</label>

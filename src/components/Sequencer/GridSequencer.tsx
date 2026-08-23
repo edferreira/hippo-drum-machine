@@ -27,7 +27,6 @@ import { DEFAULT_INSTRUMENTS } from "../../config/instruments";
 import { PRESETS } from "../../config/presets";
 import Controllers from "../Controllers/Controllers";
 import InstrumentHeaderControls from "../InstrumentHeaderControls/InstrumentHeaderControls";
-import SampleUploadButton from "../SampleUploadButton/SampleUploadButton";
 import { useAudioExport } from "../../lib/useAudioExport";
 import { getAudioNode } from "../../lib/webRenderer";
 import "./GridSequencer.css";
@@ -71,7 +70,7 @@ export default function GridSequencer() {
     [instrumentGrid]
   );
 
-  const { restart } = useSequencer({
+  useSequencer({
     steps: mappedSteps,
     instruments: instrumentConfig,
     bpm,
@@ -206,7 +205,6 @@ export default function GridSequencer() {
   return (
     <div className="app-container">
       <div className="sequencer-header">
-        <SampleUploadButton onPick={handlePick} />
         <Controllers
           steps={steps}
           setSteps={setTrackSteps}
@@ -219,7 +217,7 @@ export default function GridSequencer() {
           beatsPerBar={beatsPerBar}
           setBeatsPerBar={setBeatsPerBar}
           onSelectPreset={handleSelectPreset}
-          onRestart={restart}
+          onPickSample={handlePick}
           onExport={handleExport}
           isExporting={isExporting}
         />
