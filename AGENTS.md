@@ -5,6 +5,13 @@ This project uses **bd** (beads) for issue tracking. Run `bd prime` for full wor
 > Issues live in a local Dolt database (`.beads/dolt/`); cross-machine sync
 > uses `bd dolt push/pull` against `refs/dolt/data` on your git remote.
 
+## Rules
+
+- Never do anything that wasn't explicitly asked.
+- Do not add features, UI elements, buttons, or behavior without
+  clear consent.
+- When in doubt, ask before acting.
+
 ## Quick Reference
 
 ```bash
